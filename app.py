@@ -8,7 +8,6 @@ from flask_sqlalchemy import SQLAlchemy
 app = Flask(__name__)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///qcmtest.db'
-app.config['PERMANENT_SESSION_LIFETIME'] = 3600
 db = SQLAlchemy(app)
 app.secret_key = 'secretkey'
 
@@ -277,11 +276,11 @@ def create_cours():
     cours = Course(pdf_url=pdf_url, num_qst=num_qst,
                    prof_id=prof_id, name=name)
     try:
-        print(cours)
         db.session.add(cours)
         db.session.commit()
         return redirect('/prof')
-    except:
+    except Exception as e:
+        print(f"Error: {e}")
         return 'There was an issue adding your task'
 
 
