@@ -258,8 +258,8 @@ def validate_answers():
 @app.route('/prof', methods=['GET'])
 def prof():
     professor = Prof.query.filter_by(username=session['username']).first()
-
-    return render_template('prof/index.html', professor=professor)
+    courses = Course.query.filter_by(prof_id=professor.id).all()
+    return render_template('prof/index.html', professor=professor, courses=courses)
 
 
 @app.route('/prof/create', methods=['POST', 'GET'])

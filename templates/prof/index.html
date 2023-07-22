@@ -45,6 +45,14 @@
         .create-course-btn:hover {
             background-color: #0056b3;
         }
+
+        .list-group-item a {
+            /* paragraph only one line */
+            display: block;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
     </style>
 </head>
 <body>
@@ -56,8 +64,8 @@
                         <h1 class="mb-4">Welcome, Professor!</h1>
                         <h3>Your Qcm:</h3>
                         <ul class="list-group">
-                            {% for qcm in Qcm %}
-                            <li class="list-group-item">{{ qcm.name  }}</li>
+                            {% for qcm in courses %}
+                            <li class="list-group-item"><strong>{{ qcm.name  }}</strong><a href="{{ qcm.pdf_url }}">{{ qcm.pdf_url }}</a></li>
                             {% endfor %}
                         </ul>
                         <a href="/prof/create" class="btn btn-primary create-course-btn mt-3">Create QCM</a>
