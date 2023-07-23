@@ -29,6 +29,7 @@ class User(db.Model):
 class Prof(User):
     id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
     courses = db.relationship('Course', backref='prof')
+    classe = db.relationship('Classe', backref='prof')
 
     def __init__(self, name, username, password, email, type):
         super().__init__(name=name, username=username,
@@ -37,6 +38,7 @@ class Prof(User):
 
 class Student(User):
     id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
+    classe = db.relationship('Classe', backref='student')
 
     def __init__(self, name, username, password, email, type):
         super().__init__(name=name, username=username,
@@ -188,7 +190,7 @@ def register():
         username = request.form['username']
         password = request.form['password']
         email = request.form['email']
-        user_type = request.form['type']  # Changed 'type' to 'user_type'
+        user_type = request.form['type']
 
         if user_type == 'prof':
             user = Prof(name=nom, username=username,
@@ -204,7 +206,7 @@ def register():
             db.session.add(user)
             db.session.commit()
             return redirect('/')
-        except Exception as e:  # Catch specific exceptions to handle potential errors
+        except Exception as e:
             print(f"Error: {e}")
             return 'There was an issue adding your task'
 
@@ -212,31 +214,28 @@ def register():
         return render_template('user/register.html')
 
 
-@app.route('/temp', methods=['GET', 'POST'])
-def index():
-    if request.method == 'POST':
-        pdf_url = request.form['pdf_url']
-        n = request.form['num']
-        question = ''
-        if int(n) == 3:
-            question = 'Vous devez générer ' + \
-                str(n) + ' questions à choix multiples (QCM) avec les réponses. Pour chaque question, utilisez la balise <h1> pour le texte de la question, la balise <p> pour les choix de réponse, séparés par des balises <br>, et la balise <strong> pour la réponse correcte. Chaque question doit être séparée par une balise <hr>.'
-        elif (int(n) == 5 or int(n) == 4):
-            question = 'Vous devez générer ' + \
-                str(n) + ' questions à choix multiples (QCM) avec les réponses. Utilisez la balise <h1> pour le texte de la question, la balise <p> pour tous les choix de réponse, séparés par des balises <br>, puis la balise <strong> pour la réponse correcte. Chaque question doit être séparée par une balise <hr>.'
+@app.route('/etudiant/qcm', methods=['GET', 'POST'])
+def etudiant_qcm():
+    pdf_url = request.form['pdf_url']
+    n = request.form['num']
+    question = ''
+    if int(n) == 3:
+        question = 'Vous devez générer ' + \
+            str(n) + ' questions à choix multiples (QCM) avec les réponses. Pour chaque question, utilisez la balise <h1> pour le texte de la question, la balise <p> pour les choix de réponse, séparés par des balises <br>, et la balise <strong> pour la réponse correcte. Chaque question doit être séparée par une balise <hr>.'
+    elif (int(n) == 5 or int(n) == 4):
+        question = 'Vous devez générer ' + \
+            str(n) + ' questions à choix multiples (QCM) avec les réponses. Utilisez la balise <h1> pour le texte de la question, la balise <p> pour tous les choix de réponse, séparés par des balises <br>, puis la balise <strong> pour la réponse correcte. Chaque question doit être séparée par une balise <hr>.'
 
-        source_id = add_pdf_via_url(pdf_url)
-        if source_id:
-            answer = send_chat_message(source_id, question)
-            if answer:
-                print(answer)
-                qcm_list = parse_qcm_html(answer)
-                session['qcm_list'] = qcm_list
-                return render_template('result.html', qcm_list=qcm_list)
-        else:
-            return render_template('error.html')
-
-    return render_template('index.html')
+    source_id = add_pdf_via_url(pdf_url)
+    if source_id:
+        answer = send_chat_message(source_id, question)
+        if answer:
+            print(answer)
+            qcm_list = parse_qcm_html(answer)
+            session['qcm_list'] = qcm_list
+            return render_template('etudiant/result.html', qcm_list=qcm_list)
+    else:
+        return render_template('error.html')
 
 
 @app.route('/validate_answers', methods=['POST'])
@@ -262,9 +261,30 @@ def prof():
     return render_template('prof/index.html', professor=professor, courses=courses)
 
 
-@app.route('/prof/create', methods=['POST', 'GET'])
-def create():
-    return render_template('prof/create.html')
+@app.route('/prof/create', methods=['GET', 'POST'])
+def create_professor():
+    if request.method == 'POST':
+        name = request.form['name']
+        username = request.form['username']
+        password = request.form['password']
+        email = request.form['email']
+
+        new_professor = Prof(name=name, username=username,
+                             password=password, email=email, type='prof')
+
+        try:
+            db.session.add(new_professor)
+            db.session.commit()
+            return redirect('/admin')
+        except:
+            return 'There was an issue adding the professor.'
+    else:
+        return render_template('prof/create.html')
+
+
+@app.route('/prof/qcm', methods=['POST', 'GET'])
+def insert_qcm():
+    return render_template('prof/qcm.html')
 
 
 @app.route('/cours/create', methods=['POST'])
@@ -282,6 +302,69 @@ def create_cours():
     except Exception as e:
         print(f"Error: {e}")
         return 'There was an issue adding your task'
+
+
+@app.route('/etudiant', methods=['GET'])
+def etudiant():
+    student = Student.query.filter_by(username=session['username']).first()
+    class_id = student.classe[0].professor_id
+    # take the prof id from the classe
+    professor_id = Prof.query.filter_by(id=class_id).first().id
+    # professor and student are linked by classe
+    courses = Course.query.filter_by(prof_id=professor_id).all()
+    return render_template('etudiant/index.html', student=student, courses=courses)
+
+
+@app.route('/etudiant/create', methods=['GET', 'POST'])
+def create_student():
+    if request.method == 'POST':
+        name = request.form['name']
+        username = request.form['username']
+        password = request.form['password']
+        email = request.form['email']
+
+        new_student = Student(name=name, username=username,
+                              password=password, email=email, type='etudiant')
+
+        try:
+            db.session.add(new_student)
+            db.session.commit()
+            return redirect('/admin')
+        except:
+            return 'There was an issue adding the student.'
+    else:
+        return render_template('etudiant/create.html')
+
+
+@app.route('/admin', methods=['GET'])
+def admin():
+    students = Student.query.all()
+    professors = Prof.query.all()
+    classes = Classe.query.all()
+
+    return render_template('admin/index.html', students=students, professors=professors, classes=classes)
+
+
+@app.route('/classe/create', methods=['GET', 'POST'])
+def create_classe():
+    if request.method == 'POST':
+        professor_id = request.form['professor']
+        student_id = request.form['student']
+        class_name = request.form['name']
+
+        new_class = Classe(professor_id=professor_id,
+                           student_id=student_id, name=class_name)
+
+        try:
+            db.session.add(new_class)
+            db.session.commit()
+            return redirect('/admin')
+        except:
+            return 'There was an issue adding the class.'
+    else:
+        professors = Prof.query.all()
+        students = Student.query.all()
+        return render_template('classe/create.html', professors=professors, students=students)
 
 
 if __name__ == '__main__':
