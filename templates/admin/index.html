@@ -14,7 +14,21 @@
             color: #fff;
             text-align: center;
             padding: 10px 0;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
         }
+
+        header a {
+            color: #fff;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        header a:hover {
+            color: #ccc;
+        }
+
         .container {
             display: flex;
             flex-wrap: wrap;
@@ -77,6 +91,7 @@
 <body>
     <header>
         <h1>Admin Dashboard</h1>
+        <a href="/">Logout</a>
     </header>
     <div class="container">
         <div class="section">
